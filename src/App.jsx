@@ -45,6 +45,8 @@ ${FONTS}
   --yn-border:rgba(0,0,0,.08);
 }
 *{box-sizing:border-box;}
+html{ scroll-behavior:smooth; }
+#features, #how, #faq{ scroll-margin-top: 76px; }
 .ykr{
   font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
   color:var(--yn-text);
@@ -617,7 +619,7 @@ function LoginPage({ onBack, onLogin }) {
               <label className="text-xs font-semibold text-slate-500 mb-1 block">E-mail</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input className="ykr-input pl-9" placeholder="voce@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input className="ykr-input pl-9" style={{ paddingLeft: 36 }} placeholder="voce@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
             </div>
             <div>
