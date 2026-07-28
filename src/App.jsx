@@ -714,7 +714,7 @@ function AppShell({ user, onLogout, children, tab, setTab }) {
           <button className="lg:hidden text-slate-500" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
           <div className="relative flex-1 max-w-md">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input className="ykr-input pl-9 !py-2 !bg-slate-50" placeholder="Buscar leis, ferramentas, histórico…" />
+            <input className="ykr-input pl-9 !py-2 !bg-slate-50" style={{ paddingLeft: 36 }} placeholder="Buscar leis, ferramentas, histórico…" />
           </div>
           <div className="ml-auto flex items-center gap-3">
             <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors">
@@ -805,6 +805,7 @@ const TOOL_META = {
   complaint: { title: "Gerador de Reclamações", icon: AlertTriangle, desc: "Descreva um problema público para gerar uma reclamação formal." },
   agency: { title: "Localizador de Órgãos", icon: Building2, desc: "Descubra o órgão responsável por resolver seu problema." },
   consumer: { title: "Direitos do Consumidor", icon: ShoppingBag, desc: "Tire dúvidas sobre reembolsos, atrasos e cobranças." },
+  criminal: { title: "Orientação Penal", icon: Scale, desc: "Descreva uma situação e veja se pode configurar crime, e o que fazer." },
 };
 
 function ToolsHub({ activeTool, setActiveTool, pushToast, onSaved }) {
@@ -926,6 +927,20 @@ Máximo 4 itens em cada lista, frases curtas e práticas.`;
         const data = await callClaude(system, user);
         setResult({ type: "consumer", data });
         record = await saveHistory({ tool: "consumer", title: "Consulta de direitos do consumidor", protocol: nextProtocol(), summary: data.resumo, data });
+      } else if (toolId === "criminal") {
+        system = `Você é um assistente que ajuda cidadãos brasileiros a entender, de forma inicial e educativa, se uma situação relatada por eles pode configurar um crime segundo o Código Penal brasileiro e leis correlatas (Lei Maria da Penha, Estatuto da Criança e do Adolescente, Lei do Racismo, etc.), respondendo em português do Brasil. Isto NÃO é aconselhamento jurídico formal nem uma acusação — é orientação inicial sobre possíveis próximos passos. Responda APENAS com um JSON válido no formato exato:
+{"possivelEnquadramento":"...","baseLegal":"...","gravidadePercebida":"baixa|média|alta","paraOndeIr":["...","..."],"oQueFazer":["...","..."],"contatosUteis":[{"nome":"...","contato":"...","quando":"..."}],"avisoSeguranca":"...","avisoJuridico":"Esta é uma orientação inicial gerada por IA, não substitui uma denúncia formal nem o aconselhamento de um advogado, defensor público ou delegado."}
+Regras importantes:
+- "possivelEnquadramento" descreve em linguagem simples o que a situação PODE configurar, sempre com cautela ("pode configurar", "há indícios de"), nunca de forma afirmativa/definitiva.
+- Se a situação sugerir risco imediato à vida ou integridade física, "avisoSeguranca" deve orientar a ligar para 190 (Polícia Militar) IMEDIATAMENTE, antes de qualquer outra providência.
+- Se envolver violência doméstica ou de gênero, inclua o Disque 180 em contatosUteis.
+- Se envolver crianças ou adolescentes, inclua o Disque 100 em contatosUteis.
+- Sempre inclua a Defensoria Pública em contatosUteis para quem não pode pagar advogado.
+- Máximo 4 itens em cada lista. Seja sério, sóbrio e nunca sensacionalista.`;
+        user = input;
+        const data = await callClaude(system, user);
+        setResult({ type: "criminal", data });
+        record = await saveHistory({ tool: "criminal", title: "Orientação penal", protocol: nextProtocol(), summary: data.possivelEnquadramento, data });
       }
       if (record) onSaved(record);
       pushToast("Gerado com sucesso", "success");
@@ -994,7 +1009,14 @@ Máximo 4 itens em cada lista, frases curtas e práticas.`;
             {toolId === "complaint" && "Descreva o problema com suas palavras"}
             {toolId === "agency" && "Descreva a situação"}
             {toolId === "consumer" && "Descreva sua dúvida de consumo"}
+            {toolId === "criminal" && "Descreva a situação, com suas palavras"}
           </label>
+          {toolId === "criminal" && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-2 flex items-start gap-1.5">
+              <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+              Se há risco imediato para alguém agora, ligue para 190 (Polícia) antes de usar esta ferramenta.
+            </p>
+          )}
           <textarea rows={6} className="ykr-input resize-none" placeholder="Escreva aqui, do seu jeito…" value={input} onChange={(e) => setInput(e.target.value)} />
         </div>
 
@@ -1139,6 +1161,55 @@ function ToolResult({ result, pushToast }) {
     );
   }
 
+  if (type === "criminal") {
+    return (
+      <ResultCard eyebrow="Orientação inicial">
+        {data.avisoSeguranca && (
+          <div className="mb-4 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+            <span className="font-medium">{data.avisoSeguranca}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between mb-3">
+          <StampBadge tone={data.gravidadePercebida === "alta" ? "danger" : data.gravidadePercebida === "baixa" ? "accent" : "primary"}>Gravidade percebida: {data.gravidadePercebida}</StampBadge>
+        </div>
+        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Pode configurar</p>
+        <p className="text-sm text-slate-700 leading-relaxed mb-4 font-medium">{data.possivelEnquadramento}</p>
+        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Base legal</p>
+        <p className="text-sm text-slate-600 leading-relaxed mb-4">{data.baseLegal}</p>
+        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase mb-2">Para onde ir</p>
+            <ul className="space-y-1.5">{(data.paraOndeIr || []).map((d, i) => <li key={i} className="flex items-start gap-2 text-sm text-slate-600"><MapPin size={13} className="text-slate-400 mt-0.5 shrink-0" /> {d}</li>)}</ul>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase mb-2">O que fazer</p>
+            <ul className="space-y-1.5">{(data.oQueFazer || []).map((d, i) => <li key={i} className="flex items-start gap-2 text-sm text-slate-600"><ChevronRight size={13} className="mt-0.5 shrink-0 text-slate-400" /> {d}</li>)}</ul>
+          </div>
+        </div>
+        {data.contatosUteis && data.contatosUteis.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-slate-400 uppercase mb-2">Contatos úteis</p>
+            <div className="space-y-2">
+              {data.contatosUteis.map((c, i) => (
+                <div key={i} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3.5 py-2.5">
+                  <Phone size={14} className="text-slate-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--yn-secondary)] truncate">{c.nome} · <span className="mono font-normal text-slate-600">{c.contato}</span></p>
+                    <p className="text-xs text-slate-500 truncate">{c.quando}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3.5 py-3">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" /> {data.avisoJuridico}
+        </div>
+      </ResultCard>
+    );
+  }
+
   return null;
 }
 
@@ -1156,7 +1227,7 @@ function HistoryTab({ records, loading, onDelete, onToggleFav }) {
       <p className="text-sm text-slate-500 mb-6">Todos os seus protocolos e consultas geradas.</p>
 
       <div className="flex flex-wrap gap-2 mb-5">
-        {[["all", "Todos"], ["fav", "Favoritos"], ["laws", "Leis"], ["news", "Notícias"], ["complaint", "Reclamações"], ["agency", "Órgãos"], ["consumer", "Consumidor"]].map(([id, label]) => (
+        {[["all", "Todos"], ["fav", "Favoritos"], ["laws", "Leis"], ["news", "Notícias"], ["complaint", "Reclamações"], ["agency", "Órgãos"], ["consumer", "Consumidor"], ["criminal", "Penal"]].map(([id, label]) => (
           <button key={id} onClick={() => setFilter(id)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${filter === id ? "border-[var(--yn-secondary)] bg-[var(--yn-secondary)] text-white" : "border-[var(--yn-border)] text-slate-500 hover:bg-slate-50"}`}>
             {label}
           </button>
