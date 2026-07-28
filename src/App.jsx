@@ -5,9 +5,10 @@ import {
   Sparkles, Copy, Check, Loader2, X, Menu, ArrowRight, Star, ShieldCheck,
   Mail, Phone, MapPin, Clock, Trash2, AlertTriangle, Send, Eye, EyeOff, Scale,
   Zap, Droplet, Volume2, Construction, Sun, Moon, ExternalLink, Trash,
-  TreePine, Wifi, Stethoscope, ClipboardList, ArrowLeft, Quote
+  TreePine, Wifi, Stethoscope, ClipboardList, ArrowLeft
 } from "lucide-react";
 import { storage } from "./storage.js";
+import { VERIFIED_AGENCIES, AGENCY_DATA_VERIFIED_AT } from "./agencyData.js";
 import { auth, db, googleProvider } from "./firebase.js";
 import {
   createUserWithEmailAndPassword,
@@ -283,11 +284,6 @@ function LandingPage({ onEnter }) {
     { title: "Resolva de verdade", desc: "Copie, baixe ou envie diretamente. Acompanhe tudo pelo histórico de protocolos." },
   ];
 
-  const testimonials = [
-    { name: "Marcela A.", role: "Moradora, Boa Viagem", quote: "Consegui redigir uma reclamação formal sobre o vazamento na minha rua em menos de dois minutos e o protocolo foi aceito de primeira." },
-    { name: "João P.", role: "Comerciante, Casa Amarela", quote: "Nunca tinha entendido de fato uma lei municipal até ler a explicação traduzida. Parece que alguém finalmente traduziu o \"economês\"." },
-    { name: "Renata S.", role: "Aposentada, Espinheiro", quote: "Encontrei o órgão certo pra reclamar da poda de árvore sem precisar ligar em cinco lugares diferentes." },
-  ];
 
   const faqs = [
     { q: "O YouKnowRecife substitui um advogado?", a: "Não. A plataforma explica leis e ajuda a redigir documentos, mas não oferece aconselhamento jurídico individual. Para casos complexos, sempre recomendamos um profissional." },
@@ -346,7 +342,7 @@ function LandingPage({ onEnter }) {
               <a href="#how" className="ykr-btn-ghost px-6 py-3.5 text-[15px]">Ver como funciona</a>
             </div>
             <div className="mt-10 flex items-center gap-8">
-              {[["48mil+", "cidadãos ajudados"], ["6", "ferramentas de IA"], ["4,9/5", "satisfação"]].map(([n, l]) => (
+              {[["6", "ferramentas de IA"], ["100%", "gratuito para uso pessoal"], ["Dados", "verificados em fontes oficiais"]].map(([n, l]) => (
                 <div key={l}>
                   <div className="text-2xl font-extrabold text-[var(--yn-secondary)]">{n}</div>
                   <div className="text-xs text-slate-500">{l}</div>
@@ -419,24 +415,28 @@ function LandingPage({ onEnter }) {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* TRANSPARÊNCIA */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="max-w-xl mb-12">
-          <StampBadge tone="neutral">Depoimentos</StampBadge>
-          <h2 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight text-[var(--yn-secondary)]">Gente de Recife resolvendo problemas de verdade</h2>
+          <StampBadge tone="neutral">Transparência</StampBadge>
+          <h2 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight text-[var(--yn-secondary)]">De onde vêm os dados que você recebe</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-5">
-          {testimonials.map((t) => (
-            <div key={t.name} className="ykr-card p-6 flex flex-col">
-              <Quote size={20} className="text-[var(--yn-primary-ink)] mb-3" />
-              <p className="text-sm text-slate-600 leading-relaxed flex-1">"{t.quote}"</p>
-              <div className="mt-5 flex items-center gap-2">
-                <div className="flex">{[...Array(5)].map((_, i) => <Star key={i} size={12} className="text-[var(--yn-primary)] fill-[var(--yn-primary)]" />)}</div>
-              </div>
-              <p className="mt-2 text-sm font-semibold text-[var(--yn-secondary)]">{t.name}</p>
-              <p className="text-xs text-slate-400">{t.role}</p>
-            </div>
-          ))}
+          <div className="ykr-card p-6">
+            <ShieldCheck size={22} className="text-[var(--yn-accent)] mb-3" />
+            <h3 className="font-bold text-sm text-[var(--yn-secondary)] mb-1.5">Órgãos verificados manualmente</h3>
+            <p className="text-[13.5px] text-slate-500 leading-relaxed">Telefone, e-mail e endereço dos principais órgãos de Recife (Compesa, Neoenergia, EMLURB, CTTU, Saúde) vêm de checagem manual em fontes oficiais — não são inventados por IA.</p>
+          </div>
+          <div className="ykr-card p-6">
+            <Sparkles size={22} className="text-[var(--yn-primary-ink)] mb-3" />
+            <h3 className="font-bold text-sm text-[var(--yn-secondary)] mb-1.5">IA só traduz e organiza</h3>
+            <p className="text-[13.5px] text-slate-500 leading-relaxed">A inteligência artificial explica leis e redige textos — mas nunca decide sozinha um contato oficial quando existe um dado verificado disponível.</p>
+          </div>
+          <div className="ykr-card p-6">
+            <AlertTriangle size={22} className="text-amber-600 mb-3" />
+            <h3 className="font-bold text-sm text-[var(--yn-secondary)] mb-1.5">Quando é estimativa, dizemos isso</h3>
+            <p className="text-[13.5px] text-slate-500 leading-relaxed">Fora dos órgãos já verificados, a ferramenta deixa claro na tela que o contato é uma estimativa de IA e pede para confirmar no canal oficial.</p>
+          </div>
         </div>
       </section>
 
@@ -912,11 +912,40 @@ O campo "corpo" deve ser uma reclamação completa e formal, incluindo saudaçã
         setResult({ type: "complaint", data });
         record = await saveHistory({ tool: "complaint", title: `Reclamação: ${extra.problemType}`, protocol: nextProtocol(), summary: data.assunto, data });
       } else if (toolId === "agency") {
-        system = `Você identifica, com o seu melhor conhecimento, qual órgão público de Recife/Pernambuco, Brasil, provavelmente é responsável por um determinado problema urbano, em português do Brasil. Responda APENAS com um JSON válido no formato exato:
-{"orgao":"...","descricaoResponsabilidade":"...","emailEstimado":"...","siteEstimado":"...","telefoneEstimado":"...","horarioEstimado":"...","enderecoEstimado":"...","aviso":"Estes dados são uma estimativa gerada por IA e devem ser confirmados no canal oficial antes do envio."}
-Use os órgãos reais de Recife quando souber (ex: EMLURB, Compesa, Neoenergia Pernambuco, CTTU, Secretaria de Saúde do Recife), mas deixe claro no campo "aviso" que os dados de contato são estimativas.`;
+        system = `Você classifica um problema urbano relatado por um cidadão de Recife, Brasil, em uma categoria fixa de órgão responsável, respondendo em português do Brasil. Responda APENAS com um JSON válido no formato exato:
+{"categoria":"agua|energia|emlurb|transito|saude|geral|outro","descricaoResponsabilidade":"...","orgao":"...","emailEstimado":"...","siteEstimado":"...","telefoneEstimado":"...","horarioEstimado":"...","enderecoEstimado":"..."}
+Categorias fixas — escolha a mais adequada:
+- "agua": vazamento, falta d'água, esgoto, saneamento
+- "energia": falta de energia elétrica, fiação, poste da rede elétrica
+- "emlurb": iluminação pública (poste/lâmpada apagada), poda de árvore, buraco na rua/calçada, lixo/entulho, drenagem/bueiro entupido
+- "transito": semáforo, sinalização viária, faixa de pedestre
+- "saude": posto de saúde, UPA, atendimento do SUS municipal, vacina
+- "geral": outro serviço da Prefeitura do Recife que não se encaixe acima
+- "outro": problema que não é da Prefeitura do Recife nem das concessionárias listadas (ex: assunto federal, estadual, empresa privada)
+"descricaoResponsabilidade" deve ter 1-2 frases explicando por que essa categoria se aplica. Os campos "orgao", "emailEstimado", "siteEstimado", "telefoneEstimado", "horarioEstimado" e "enderecoEstimado" só serão usados quando a categoria for "outro" — preencha-os com sua melhor estimativa nesse caso; nos demais casos pode deixá-los vazios.`;
         user = input;
-        const data = await callClaude(system, user);
+        const classification = await callClaude(system, user);
+        const verified = VERIFIED_AGENCIES[classification.categoria];
+        let data;
+        if (verified) {
+          data = {
+            ...verified,
+            descricaoResponsabilidade: classification.descricaoResponsabilidade || verified.descricaoResponsabilidade,
+            verificado: true,
+            verificadoEm: AGENCY_DATA_VERIFIED_AT,
+          };
+        } else {
+          data = {
+            orgao: classification.orgao,
+            descricaoResponsabilidade: classification.descricaoResponsabilidade,
+            telefone: classification.telefoneEstimado,
+            email: classification.emailEstimado,
+            site: classification.siteEstimado,
+            endereco: classification.enderecoEstimado,
+            horario: classification.horarioEstimado,
+            verificado: false,
+          };
+        }
         setResult({ type: "agency", data });
         record = await saveHistory({ tool: "agency", title: `Órgão: ${data.orgao}`, protocol: nextProtocol(), summary: data.descricaoResponsabilidade, data });
       } else if (toolId === "consumer") {
@@ -1129,18 +1158,31 @@ function ToolResult({ result, pushToast }) {
   if (type === "agency") {
     return (
       <ResultCard eyebrow="Órgão identificado">
-        <h3 className="font-bold text-lg text-[var(--yn-secondary)] mb-1">{data.orgao}</h3>
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <h3 className="font-bold text-lg text-[var(--yn-secondary)]">{data.orgao}</h3>
+          {data.verificado ? (
+            <StampBadge tone="accent">Dados verificados</StampBadge>
+          ) : (
+            <StampBadge tone="primary">Estimativa de IA</StampBadge>
+          )}
+        </div>
         <p className="text-sm text-slate-500 mb-5">{data.descricaoResponsabilidade}</p>
         <div className="grid sm:grid-cols-2 gap-3">
-          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><Mail size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.emailEstimado}</span></div>
-          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><ExternalLink size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.siteEstimado}</span></div>
-          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><Phone size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.telefoneEstimado}</span></div>
-          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><Clock size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.horarioEstimado}</span></div>
-          <div className="sm:col-span-2 flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><MapPin size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.enderecoEstimado}</span></div>
+          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><Mail size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.email}</span></div>
+          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><ExternalLink size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.site}</span></div>
+          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><Phone size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.telefone}</span></div>
+          <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><Clock size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.horario}</span></div>
+          <div className="sm:col-span-2 flex items-center gap-2.5 bg-slate-50 rounded-xl px-3.5 py-3"><MapPin size={15} className="text-slate-400 shrink-0" /><span className="text-sm text-slate-600 truncate">{data.endereco}</span></div>
         </div>
-        <div className="mt-4 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3.5 py-3">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" /> {data.aviso}
-        </div>
+        {data.verificado ? (
+          <div className="mt-4 flex items-start gap-2 text-xs text-emerald-700 bg-emerald-50 rounded-xl px-3.5 py-3">
+            <ShieldCheck size={14} className="shrink-0 mt-0.5" /> Dados conferidos manualmente em fontes oficiais (checagem: {data.verificadoEm}). Confirme no canal oficial antes de um envio formal, pois contatos públicos podem mudar.
+          </div>
+        ) : (
+          <div className="mt-4 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3.5 py-3">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" /> Estes dados são uma estimativa gerada por IA e devem ser confirmados no canal oficial antes do envio.
+          </div>
+        )}
       </ResultCard>
     );
   }
